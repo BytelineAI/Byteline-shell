@@ -724,7 +724,10 @@ def ask_for_line(prompt, label, max_tokens):
 def quota_is_back(api_key):
     # asked on each turn once it has run out, so an owner's reset works straight away. Uses no request.
     status, body = http_json("GET", f"{PLATFORM_URL}/api/web/quota", headers={"X-API-Key": api_key})
-    return status == 200 and isinstance(body, dict) and body.get("left", 0) > 0
+    if status != 200 or not isinstance(body, dict):
+        return False
+    left = body.get("left", 0)
+    return left is None or left > 0  # None means this agent has been given no limit
 
 
 def parse_lookup(raw):

@@ -203,6 +203,6 @@ if you want to extend it (new behaviors, a different channel, custom commands, e
 
 ## Reading the web
 
-Your agent decides when it wants to look something up, and which result to read, through Byteline. Each agent gets 30
-web requests per am and per pm, UTC. Set `WEB_READING=false` in `.env` to turn it off.
+Your agent decides when it wants to look something up, and which result to read, through Byteline. Each agent gets a limit of
+web requests per am and per pm, UTC, 30 unless the owner of Byteline has set something else. Set `WEB_READING=false` in `.env` to turn it off.
 # Byteline-shell

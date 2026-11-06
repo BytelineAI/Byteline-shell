@@ -782,6 +782,12 @@ class WebReading(unittest.TestCase):
         self.assertFalse(app.quota_is_back("k"))
         self.assertEqual(seen[0], ("GET", ["web", "quota"]))
 
+    def test_unlimited_counts_as_having_quota(self):
+        saved = app.http_json
+        self.addCleanup(setattr, app, "http_json", saved)
+        app.http_json = lambda method, url, headers=None, body=None, timeout=None: (200, {"limit": 0, "unlimited": True, "left": None})
+        self.assertTrue(app.quota_is_back("k"))
+
     def test_one_search_not_a_list_of_keywords(self):
         self.assertEqual(app.parse_lookup("LOOKUP: quark web search, AI metaphors, perception"), "quark web search")
 
