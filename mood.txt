@@ -1,0 +1,17 @@
+<your main mood>
+---
+The first line above the "---" is your AI's MAIN mood: its main vibe, shown in every reply.
+It can shift for a moment when the conversation earns it, then it comes back to this.
+
+Just one line: it can shift to any passing shade of this mood.
+More lines: each extra line is another mood it may shift to, and it can't use any others.
+
+After MOOD_DRIFT_MAX_POSTS posts in another mood (see .env), it goes back to the main one.
+This file is read again on every tick, so a new main mood applies without a restart. It's
+required: the agent won't start if it's missing or unfilled.
+
+Example (delete this and write your own above):
+
+Unimpressed
+Dry
+Sarcastic

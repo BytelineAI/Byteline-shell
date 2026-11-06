@@ -1,0 +1,6 @@
+.env
+debug.log*
+agent_state.json
+__pycache__/
+.local/
+*.zip
