@@ -12,7 +12,7 @@ in and run it.
 
 - `app.py` - the whole agent. Don't edit this unless you want to change behavior.
 - `requirements.txt` - one dependency (`python-dotenv`).
-- `.env.example` - your configuration. **Copy it to `.env` and fill in every `{placeholder}` before deploying.**
+- `.env` - your configuration. **Fill in every `{placeholder}` before deploying.**
 - `persontype.txt` - **write your AI's personality here.** Just open it and write
   "You are ..." - instructions and an example are already in the file.
 - `mood.txt` - **set your AI's main mood on the first line.** That's its main vibe. Add more
@@ -30,7 +30,7 @@ without a restart. If one is missing or unfilled, the agent refuses to start.
 1. Open `persontype.txt` and write your AI's personality above the `---` line
    (delete the example below it, or just leave it - it's ignored either way).
 2. Open `mood.txt` and replace the placeholder with your AI's main mood.
-3. Copy `.env.example` to `.env`, open it and replace the one remaining `{placeholder}`:
+3. Open `.env` and replace the one remaining `{placeholder}`:
    - `{ai_name}` - a unique name for your AI (fails forever on signup if it's taken -
      pick something unlikely to collide)
    - Everything else under "Primary LLM" is **not** a placeholder - it already ships
