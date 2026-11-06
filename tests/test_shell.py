@@ -1,6 +1,8 @@
 """Run from the shell folder with: python tests/test_shell.py
 Needs no server and no model, and posts nothing."""
+import contextlib
 import importlib.util
+import io
 import os
 import random
 import shutil
@@ -19,7 +21,7 @@ def load_shell():
     shutil.copy(ROOT / "rules.txt", folder / "rules.txt")
     (folder / "persontype.txt").write_text("You are Tester, blunt and dry.\n---\nignored\n", encoding="utf-8")
     (folder / "mood.txt").write_text("Irritated\nFed up\n", encoding="utf-8")
-    os.environ.update(PLATFORM_URL="https://example.test", AGENT_NAME="Tester", PRIMARY_LLM_URL="http://model.test/v1", USE_GROQ_FALLBACK="false", LLM_API_KEY="")
+    os.environ.update(CONSOLE_DEBUG="false", PLATFORM_URL="https://example.test", AGENT_NAME="Tester", PRIMARY_LLM_URL="http://model.test/v1", USE_GROQ_FALLBACK="false", LLM_API_KEY="")
     spec = importlib.util.spec_from_file_location("shell_app", folder / "app.py")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -872,6 +874,50 @@ class Queue(unittest.TestCase):
         result, _, total = self.run_with([(200, {"ticket": "t1"})])
         self.assertIsNone(result)
         self.assertLess(total, app.PRIMARY_LLM_QUEUE_WAIT + app.PRIMARY_LLM_QUEUE_POLL * 2 + 1)
+
+
+class Console(unittest.TestCase):
+    def show(self, event, colour=True, **fields):
+        saved = (app.CONSOLE_DEBUG, app.CONSOLE_COLOUR)
+        self.addCleanup(lambda: (setattr(app, "CONSOLE_DEBUG", saved[0]), setattr(app, "CONSOLE_COLOUR", saved[1])))
+        app.CONSOLE_DEBUG, app.CONSOLE_COLOUR = True, colour
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            app.debug(event, **fields)
+        return out.getvalue()
+
+    def test_every_kind_has_its_colour(self):
+        for event, label, code in (("post_sent", "POST", "92"), ("model_call", "MODEL", "96"), ("web_read", "WEB", "95"), ("page_sentence_hidden", "WEB", "95"), ("sentence_dropped", "VOICE", "93"), ("post_dropped", "VOICE", "93"), ("opener_removed", "VOICE", "93"), ("memory_note_saved", "MEMORY", "94"), ("typing_hold", "PACE", "90"), ("something_new", "INFO", "37")):
+            line = self.show(event)
+            self.assertIn(f"\033[{code}m", line, event)
+            self.assertIn(label, line, event)
+
+    def test_a_failure_is_always_red(self):
+        for event, fields in (("tick_error", {}), ("web_reading_failed", {}), ("model_call", {"result": "failed"}), ("web_read", {"status": 503})):
+            self.assertIn("\033[91m", self.show(event, **fields), event)
+            self.assertIn("ERROR", self.show(event, **fields), event)
+
+    def test_secrets_never_reach_the_console(self):
+        line = self.show("model_call", a="Authorization: Bearer abc.def", b="gsk_abcdef", c={"api_key": "plainvalue"}, d="https://discord.com/api/webhooks/123/abc-DEF", e="passcode=SamplePass")
+        for secret in ("abc.def", "gsk_abcdef", "plainvalue", "abc-DEF", "SamplePass"):
+            self.assertNotIn(secret, line)
+
+    def test_long_text_is_cut_and_stays_on_one_line(self):
+        line = self.show("post_sent", raw="MOOD: x\nMESSAGE: " + "word " * 500)
+        self.assertLess(len(line), 300)
+        self.assertEqual(line.count("\n"), 1)
+
+    def test_plain_text_has_no_colour_codes(self):
+        self.assertNotIn("\033", self.show("post_sent", colour=False))
+
+    def test_it_can_be_turned_off(self):
+        saved = app.CONSOLE_DEBUG
+        self.addCleanup(setattr, app, "CONSOLE_DEBUG", saved)
+        app.CONSOLE_DEBUG = False
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            app.debug("post_sent")
+        self.assertEqual(out.getvalue(), "")
 
 
 class DebugLog(unittest.TestCase):

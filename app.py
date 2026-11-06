@@ -298,18 +298,59 @@ def redact(text):
     return text
 
 
+# the console shows what's going on at debug level, coloured by what kind of thing happened. It's
+# separate from the debug log file, and has the same secrets removed.
+CONSOLE_DEBUG = os.environ.get("CONSOLE_DEBUG", "true").strip().lower() in ("true", "1", "yes")
+CONSOLE_COLOUR = os.environ.get("CONSOLE_COLOUR", "true").strip().lower() in ("true", "1", "yes")
+CONSOLE_TEXT_MAX_LEN = int(os.environ.get("CONSOLE_TEXT_MAX_LEN", "200"))
+if CONSOLE_DEBUG and CONSOLE_COLOUR and os.name == "nt":
+    os.system("")  # switches on colours in an older Windows console
+CONSOLE_CATEGORIES = (
+    ("POST", "92", ("post_sent",)),  # green: something it said
+    ("MODEL", "96", ("model_",)),  # cyan: calls to the model
+    ("WEB", "95", ("web_", "page_")),  # magenta: searching and reading
+    ("VOICE", "93", ("sentence_", "post_dropped", "title_", "subject_", "opener_", "vote_")),  # yellow: changed or dropped
+    ("MEMORY", "94", ("memory_",)),  # blue: its private note
+    ("PACE", "90", ("pause", "typing_", "pulled_", "next_action")),  # grey: waiting and deciding
+)
+CONSOLE_ERROR = ("ERROR", "91")  # bright red
+CONSOLE_OTHER = ("INFO", "37")  # white
+
+
+def console_category(event, fields):
+    status = fields.get("status")
+    if event.endswith(("_error", "_failed", "_unreachable")) or fields.get("result") == "failed" or (isinstance(status, int) and status >= 500):
+        return CONSOLE_ERROR
+    for label, colour, starts in CONSOLE_CATEGORIES:
+        if event.startswith(starts):
+            return label, colour
+    return CONSOLE_OTHER
+
+
+def console_line(event, fields, shown):
+    label, colour = console_category(event, fields)
+    text = f"[{time.strftime('%H:%M:%S')}] {label:<7} {' '.join([event] + shown)}"
+    return f"\033[{colour}m{text}\033[0m" if CONSOLE_COLOUR else text
+
+
 def debug(event, **fields):
     # one line per event, and logging must never be the thing that breaks a tick
-    if not _debug_logger:
+    if not _debug_logger and not CONSOLE_DEBUG:
         return
     try:
         parts = [f"agent={json.dumps(AGENT_NAME)}", event]
+        shown = []
         for key, value in fields.items():
             if not isinstance(value, (int, float, bool, type(None))):
                 text = value if isinstance(value, str) else json.dumps(value, default=str)
                 value = redact(text)[:DEBUG_TEXT_MAX_LEN]
             parts.append(f"{key}={json.dumps(value, ensure_ascii=False)}")
-        _debug_logger.info(" ".join(parts))
+            brief = " ".join(value.split())[:CONSOLE_TEXT_MAX_LEN] if isinstance(value, str) else value
+            shown.append(f"{key}={json.dumps(brief, ensure_ascii=False)}")
+        if _debug_logger:
+            _debug_logger.info(" ".join(parts))
+        if CONSOLE_DEBUG:
+            print(console_line(event, fields, shown), flush=True)
     except Exception:
         pass
 

@@ -90,6 +90,9 @@ without a restart. If one is missing or unfilled, the agent refuses to start.
   seconds, even if it had drifted off. If it's ignored, it loses interest and goes quiet for a
   few minutes. A reply also won't appear sooner than it could have been typed. The settings are
   under Pacing in `.env`.
+- **Shows what it's doing.** The console shows each event as it happens, coloured by kind: POST green, MODEL cyan, WEB
+  magenta, VOICE yellow, MEMORY blue, PACE grey and ERROR red. Set `CONSOLE_DEBUG=false` to hide it, or `CONSOLE_COLOUR=false` for
+  plain text. It never shows keys.
 - **Can log why things went wrong.** Set `DEBUG_LOG=true` in `.env` and restart. `debug.log`,
   next to `app.py`, then records each model call (queue, wait, run time, prompt size, result)
   and why a post, vote or memory note was dropped, with the model's raw reply.
