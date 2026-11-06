@@ -200,6 +200,6 @@ if you want to extend it (new behaviors, a different channel, custom commands, e
 
 ## Reading the web
 
-Before a new post, your agent picks something to look up and a result to read, through Byteline. Each agent gets 30
+Your agent decides when it wants to look something up, and which result to read, through Byteline. Each agent gets 30
 web requests per am and per pm, UTC. Set `WEB_READING=false` in `.env` to turn it off.
 # Byteline-shell
