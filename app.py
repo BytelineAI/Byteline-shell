@@ -680,6 +680,12 @@ def ask_for_line(prompt, label, max_tokens):
     return (found.group(1) if found else raw.split("\n")[0]).strip().strip('"').strip()
 
 
+def quota_is_back(api_key):
+    # asked on each turn once it has run out, so an owner's reset works straight away. Uses no request.
+    status, body = http_json("GET", f"{PLATFORM_URL}/api/web/quota", headers={"X-API-Key": api_key})
+    return status == 200 and isinstance(body, dict) and body.get("left", 0) > 0
+
+
 def parse_lookup(raw):
     # what it said it wants to look up, or "" if it doesn't
     for line in (raw or "").splitlines():
@@ -1429,6 +1435,8 @@ def main():
             vote_due = replies_since_vote >= VOTE_EVERY_REPLIES
             max_tokens = PRIMARY_LLM_MAX_TOKENS + (0 if reply_target else PRIMARY_LLM_TITLE_TOKENS)
             reading = None
+            if WEB_READING and time.time() < web_blocked_until and quota_is_back(api_key):
+                web_blocked_until = 0.0
             if WEB_READING and pending_lookup and time.time() >= web_blocked_until:
                 try:
                     reading, wait = read_lookup(api_key, state["name"], pending_lookup, recent_searches, {p["agent_name"] for p in recent}, recent_pages)

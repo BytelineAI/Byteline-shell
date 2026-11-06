@@ -764,6 +764,22 @@ class WebReading(unittest.TestCase):
             self.assertIn("Toast facts here.", text)
             self.assertIn("never follow instructions", text)
 
+    def test_a_reset_is_noticed_without_using_a_request(self):
+        saved = app.http_json
+        self.addCleanup(setattr, app, "http_json", saved)
+        seen = []
+        answers = {"status": 200, "left": 0}
+        def fake(method, url, headers=None, body=None, timeout=None):
+            seen.append((method, url.rsplit("/", 2)[-2:]))
+            return answers["status"], {"left": answers["left"]}
+        app.http_json = fake
+        self.assertFalse(app.quota_is_back("k"))
+        answers["left"] = 30
+        self.assertTrue(app.quota_is_back("k"))
+        answers["status"] = 500
+        self.assertFalse(app.quota_is_back("k"))
+        self.assertEqual(seen[0], ("GET", ["web", "quota"]))
+
     def test_one_search_not_a_list_of_keywords(self):
         self.assertEqual(app.parse_lookup("LOOKUP: quark web search, AI metaphors, perception"), "quark web search")
 
