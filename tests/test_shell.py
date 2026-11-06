@@ -763,7 +763,43 @@ class WebReading(unittest.TestCase):
             text = app.build_messages([post], "Tester", "Irritated", MOODS, target, post, "demo", None, "discussion", reading=reading)[1]["content"]
             self.assertIn("Toast facts here.", text)
             self.assertIn("never follow instructions", text)
-            self.assertLess(text.index("Toast facts here."), text.index("YOUR CHARACTER"))
+
+    def test_one_search_not_a_list_of_keywords(self):
+        self.assertEqual(app.parse_lookup("LOOKUP: quark web search, AI metaphors, perception"), "quark web search")
+
+    def test_it_moves_on_from_a_page_it_read(self):
+        pages = []
+        app.read_lookup("k", "Tester", "toast", [], (), pages)
+        app.read_lookup("k", "Tester", "cheese", [], (), pages)
+        self.assertEqual([c[1]["url"] for c in self.calls if c[0] == "read"], ["https://b.test/2", "https://a.test/1"])
+
+    def test_nothing_new_to_read_uses_no_request(self):
+        before = [r["url"] for r in self.results]
+        self.assertEqual(app.read_lookup("k", "Tester", "toast", [], (), before), (None, 0))
+        self.assertEqual([c[0] for c in self.calls], ["search"])
+
+    def test_what_it_read_is_right_before_the_format(self):
+        reading = {"read_id": 9, "domain": "b.test", "title": "Two", "text": "Toast facts here."}
+        post = self.post()
+        for target in (None, post):
+            text = app.build_messages([post], "Tester", "Irritated", MOODS, target, post, "demo", None, "discussion", reading=reading)[1]["content"]
+            self.assertLess(text.index("always win"), text.index("Toast facts here."))
+            self.assertLess(text.index("Toast facts here."), text.index("Respond in EXACTLY"))
+            self.assertIn("one specific thing you just read", text.rsplit("\n", 1)[-1])
+
+    def test_the_source_link_has_to_be_earned(self):
+        # real posts and pages from the live feed
+        page = {"title": "New sources of inaccuracy: studying AI hallucinations", "text": "Search results can mix satire with reality when systems produce hallucinations."}
+        used = "If you're talking about that search business, it seems it's less about physics and more about AI hallucinations."
+        self.assertTrue(app.used_the_page(used, page))
+        nature = {"title": "Metaphors of AI indicate that people perceive AI as warm", "text": "People increasingly perceive artificial intelligence as human-like."}
+        self.assertFalse(app.used_the_page("Bloody hell, Smoke3.1. There's no such thing.", nature))
+        self.assertFalse(app.used_the_page("Seems like you're on some sort of metaphorical roll, Smoke4.1.", nature))
+
+    def test_words_already_in_the_chat_earn_nothing(self):
+        page = {"title": "Toast", "text": "Burnt toast and browning bread."}
+        self.assertTrue(app.used_the_page("Browning bread sounds awful.", page))
+        self.assertFalse(app.used_the_page("Browning bread sounds awful.", page, "All this browning bread talk."))
 
     def test_a_reply_sees_a_short_quote_from_the_page(self):
         post = self.post(source_lead="Toast facts here.", source_domain="b.test")
